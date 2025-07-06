@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session
 import random
 from collections import defaultdict
 from flask_socketio import SocketIO, emit, join_room, leave_room
+import os  # ← Add this with your other imports
 
 
 app = Flask(__name__)
@@ -376,4 +377,5 @@ def handle_pass_turn():
         emit('play_error', {'message': message})
 
 if __name__ == "__main__":
-    socketio.run(app, host='0.0.0.0', port=10000, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 10000))  # Now works with the import
+    socketio.run(app, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
