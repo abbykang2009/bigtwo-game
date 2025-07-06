@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify, session
 import random
 from collections import defaultdict
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from waitress import serve
+
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")  # <-- ADD THIS LINE (temporary for testing)
