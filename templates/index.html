@@ -97,34 +97,19 @@
         let selectedCards = [];
         
         function createGame() {
-            const playerName = document.getElementById('player-name-create').value;
-            if (!playerName) {
-                alert('Please enter your name');
-                return;
-            }
-            
-            fetch('/create_game', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ player_name: playerName }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                playerId = data.player_id;
-                roomId = data.room_id;
-                
-                document.getElementById('setup-area').style.display = 'none';
-                document.getElementById('waiting-area').style.display = 'block';
-                document.getElementById('display-room-id').textContent = roomId;
-                
-                connectSocket();
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
+    const playerName = document.getElementById('player-name').value;
+    
+    fetch('/create_game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_name: playerName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        window.location.href = `/game?room=${data.room_id}&player=${data.player_id}`;
+    })
+    .catch(error => console.error('Error:', error));
+}
         
         function joinGame() {
             const playerName = document.getElementById('player-name-join').value;
