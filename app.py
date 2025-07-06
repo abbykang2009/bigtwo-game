@@ -344,4 +344,4 @@ def handle_pass_turn():
         emit('play_error', {'message': message})
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, allow_unsafe_werkzeug=True)  # Add this parameter
