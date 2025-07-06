@@ -29,6 +29,7 @@
         .winner-content { background-color: white; padding: 30px; border-radius: 10px; text-align: center; }
         .player-count { margin: 10px 0; font-style: italic; }
         #draw-pile-count { margin: 10px 0; font-weight: bold; }
+        .loading { opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -95,7 +96,8 @@
     <script>
         // Initialize Socket.IO connection
         const socket = io("https://bigtwo-game.onrender.com", { 
-            transports: ['websocket'] 
+            transports: ['websocket'],
+            reconnectionAttempts: 5
         });
         
         let playerId;
@@ -103,9 +105,123 @@
         let selectedCards = [];
         
         // Debugging connection
-        socket.on('connect', () => console.log("Connected! Socket ID:", socket.id));
-        socket.on('disconnect', () => console.log("Disconnected!"));
-        socket.on('connect_error', (err) => console.log("Connection error:", err));
+        socket.on('connect', () => {
+            console.log("Connected! Socket ID:", socket.id);
+            document.getElementById('player-name-create').focus();
+        });
+        
+        socket.on('disconnect', () => {
+            console.log("Disconnected!");
+            alert("Lost connection to server. Please refresh the page.");
+        });
+        
+        socket.on('connect_error', (err) => {
+            console.log("Connection error:", err);
+            alert("Connection error: " + err.message);
+        });
+
+        function createGame() {
+            const playerName = document.getElementById('player-name-create').value.trim();
+            if (!playerName) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            const createBtn = document.querySelector('#create-game button');
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating Game...';
+            createBtn.classList.add('loading');
+            
+            fetch('/create_game', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ player_name: playerName })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                roomId = data.room_id;
+                playerId = data.player_name;
+                
+                document.getElementById('setup-area').style.display = 'none';
+                document.getElementById('waiting-area').style.display = 'block';
+                document.getElementById('display-room-id').textContent = roomId;
+                
+                socket.emit('create_room', {
+                    username: playerName,
+                    room_id: roomId
+                });
+            })
+            .catch(error => {
+                console.error('Error creating game:', error);
+                alert('Failed to create game: ' + error.message);
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create Game';
+                createBtn.classList.remove('loading');
+            });
+        }
+        
+        function joinGame() {
+            const playerName = document.getElementById('player-name-join').value.trim();
+            const roomIdInput = document.getElementById('room-id').value.trim();
+            
+            if (!playerName || !roomIdInput) {
+                alert('Please enter your name and room ID');
+                return;
+            }
+            
+            const joinBtn = document.querySelector('#join-game button');
+            joinBtn.disabled = true;
+            joinBtn.textContent = 'Joining...';
+            joinBtn.classList.add('loading');
+            
+            fetch('/join_game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    player_name: playerName,
+                    room_id: roomIdInput 
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                playerId = playerName;
+                roomId = roomIdInput;
+                
+                document.getElementById('setup-area').style.display = 'none';
+                document.getElementById('waiting-area').style.display = 'block';
+                document.getElementById('display-room-id').textContent = roomId;
+                
+                socket.emit('join_room', {
+                    username: playerName,
+                    room_id: roomId
+                });
+            })
+            .catch(error => {
+                console.error('Error joining game:', error);
+                alert('Error: ' + error.message);
+                joinBtn.disabled = false;
+                joinBtn.textContent = 'Join Game';
+                joinBtn.classList.remove('loading');
+            });
+        }
 
         // Handle room updates
         socket.on('room_update', (data) => {
@@ -154,38 +270,16 @@
 
         // Handle card dealing
         socket.on('deal_cards', (data) => {
-    console.log("Received cards:", data.hand); // Debug log
-    
-    const handDiv = document.getElementById('hand');
-    handDiv.innerHTML = '';
-    
-    // Sort cards by rank and suit for better display
-    const sortedHand = sortCards(data.hand);
-    
-    sortedHand.forEach(card => {
-        const cardElement = createCardElement(card, true);
-        handDiv.appendChild(cardElement);
-    });
-    
-    // Update draw pile display
-    if (data.draw_pile_count > 0) {
-        document.getElementById('draw-pile-count').textContent = 
-            `Draw Pile: ${data.draw_pile_count} cards`;
-    }
-});
-
-// Add this helper function to sort cards
-function sortCards(cards) {
-    const suitOrder = { 'spades': 0, 'hearts': 1, 'diamonds': 2, 'clubs': 3 };
-    const rankOrder = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
-    
-    return cards.sort((a, b) => {
-        if (rankOrder.indexOf(a[0]) !== rankOrder.indexOf(b[0])) {
-            return rankOrder.indexOf(a[0]) - rankOrder.indexOf(b[0]);
-        }
-        return suitOrder[a[1]] - suitOrder[b[1]];
-    });
-}
+            const handDiv = document.getElementById('hand');
+            handDiv.innerHTML = '';
+            
+            // Sort cards by rank and suit for better display
+            const sortedHand = sortCards(data.hand);
+            
+            sortedHand.forEach(card => {
+                const cardElement = createCardElement(card, true);
+                handDiv.appendChild(cardElement);
+            });
             
             // Show draw pile count if in 2-player mode
             if (data.draw_pile_count > 0) {
@@ -211,80 +305,24 @@ function sortCards(cards) {
             alert(data.message);
         });
 
-        function createGame() {
-            const playerName = document.getElementById('player-name-create').value;
-            if (!playerName) {
-                alert('Please enter your name');
-                return;
-            }
-            
-            fetch('/create_game', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ player_name: playerName })
-            })
-            .then(response => response.json())
-            .then(data => {
-                roomId = data.room_id;
-                playerId = data.player_name;
-                
-                document.getElementById('setup-area').style.display = 'none';
-                document.getElementById('waiting-area').style.display = 'block';
-                document.getElementById('display-room-id').textContent = roomId;
-                
-                socket.emit('create_room', {
-                    username: playerName,
-                    room_id: roomId
-                });
-            })
-            .catch(error => console.error('Error:', error));
-        }
-        
-        function joinGame() {
-            const playerName = document.getElementById('player-name-join').value;
-            const roomIdInput = document.getElementById('room-id').value;
-            
-            if (!playerName || !roomIdInput) {
-                alert('Please enter your name and room ID');
-                return;
-            }
-            
-            fetch('/join_game', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    player_name: playerName,
-                    room_id: roomIdInput 
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                
-                roomId = roomIdInput;
-                playerId = playerName;
-                
-                document.getElementById('setup-area').style.display = 'none';
-                document.getElementById('waiting-area').style.display = 'block';
-                document.getElementById('display-room-id').textContent = roomId;
-                
-                socket.emit('join_room', {
-                    username: playerName,
-                    room_id: roomId
-                });
-            })
-            .catch(error => console.error('Error:', error));
-        }
-
         function ready() {
             socket.emit('player_ready', {
                 room_id: roomId,
                 player_name: playerId
             });
             document.getElementById('ready-btn').disabled = true;
+        }
+        
+        function sortCards(cards) {
+            const suitOrder = { 'spades': 0, 'hearts': 1, 'diamonds': 2, 'clubs': 3 };
+            const rankOrder = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+            
+            return cards.sort((a, b) => {
+                if (rankOrder.indexOf(a[0]) !== rankOrder.indexOf(b[0])) {
+                    return rankOrder.indexOf(a[0]) - rankOrder.indexOf(b[0]);
+                }
+                return suitOrder[a[1]] - suitOrder[b[1]];
+            });
         }
         
         function createCardElement(card, selectable) {
