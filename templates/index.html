@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Big Two - 2-3 Player Online</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -31,6 +31,28 @@
     </style>
 </head>
 <body>
+     <!-- Your game HTML here -->
+
+    <!-- 2. Initialize socket BEFORE your game logic -->
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io("https://bigtwo-game.onrender.com", {
+            reconnection: true,
+            reconnectionAttempts: 5
+        });
+
+        // Debugging connection
+        socket.on('connect', () => console.log("Connected! Socket ID:", socket.id));
+        socket.on('disconnect', () => console.log("Disconnected!"));
+
+        // --- YOUR EXISTING GAME CODE BELOW HERE ---
+        let playerId;
+        let roomId;
+        
+        function createGame() {
+            // ... your existing functions ...
+        }
+    </script>
     <div class="container">
         <h1>Big Two - 2-3 Player Online</h1>
         
@@ -445,7 +467,7 @@
 <!-- Then your custom JS -->
 <script src="/static/script.js"></script> 
 <script>
-    const socket = io();  // Connect to server
+    
 </script>
 </body>
 </html>
