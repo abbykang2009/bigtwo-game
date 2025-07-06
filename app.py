@@ -5,8 +5,25 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from waitress import serve
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")  # <-- ADD THIS LINE (temporary for testing)
+
+@app.route("/")
+def home():
+    return "Hello World"
+
+# ADD THESE LINES FOR ROOM MANAGEMENT
+@socketio.on("create_room")
+def handle_create_room(room_id):
+    join_room(room_id)
+    emit("room_created", {"room_id": room_id}, to=room_id)
+
+@socketio.on("join_room")
+def handle_join_room(room_id):
+    join_room(room_id)
+    emit("player_joined", {"message": "New player!"}, to=room_id)
+
+if __name__ == "__main__":
+    socketio.run(app, debug=True)  # <-- CHANGE THIS LINE
 
 games = {}
 
