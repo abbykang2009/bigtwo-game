@@ -4,3 +4,5 @@ waitress==3.0.0
 flask-socketio
 python-engineio>=3.0.0
 python-socketio>=4.0.0
+gunicorn
+eventlet
