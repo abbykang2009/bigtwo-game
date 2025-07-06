@@ -36,9 +36,9 @@
     <!-- 2. Initialize socket BEFORE your game logic -->
     <script>
         // Initialize Socket.IO connection
-        const socket = io("https://bigtwo-game.onrender.com", {
-            reconnection: true,
-            reconnectionAttempts: 5
+        const socket = io("https://bigtwo-game.onrender.com", { 
+  transports: ['websocket'] 
+});
         });
 
         // Debugging connection
