@@ -11,7 +11,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # <-- ADD THIS LINE (tempora
 
 @app.route("/")
 def home():
-    return "Hello World"
+    return render_template("index.html")  # or your HTML file name
 
 # ADD THESE LINES FOR ROOM MANAGEMENT
 # Add below your existing socketio code
