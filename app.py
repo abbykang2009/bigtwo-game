@@ -38,33 +38,33 @@ class BigTwoGame:
         return True
     
     def deal_cards(self):
-    num_players = len(self.players)
-    if num_players not in [2, 3]:
-        return False
-    
-    # Reset deck and shuffle
-    self.initialize_deck()
-    
-    # Deal face up card (last card in deck)
-    self.face_up_card = self.deck.pop()
-    
-    # Deal to players
-    if num_players == 2:
-        # Deal 17 cards to each player (alternating)
-        for i in range(17):
-            self.players[list(self.players.keys())[0]]['hand'].append(self.deck.pop())
-            self.players[list(self.players.keys())[1]]['hand'].append(self.deck.pop())
-        self.draw_pile = self.deck.copy()  # Remaining 17 cards
-    else:  # 3 players
-        for i in range(17):
-            self.players[list(self.players.keys())[0]]['hand'].append(self.deck.pop())
-            self.players[list(self.players.keys())[1]]['hand'].append(self.deck.pop())
-            self.players[list(self.players.keys())[2]]['hand'].append(self.deck.pop())
-        self.draw_pile = []
-    
-    # Assign face up card
-    self.assign_face_up_card()
-    return True
+        num_players = len(self.players)
+        if num_players not in [2, 3]:
+            return False
+        
+        # Reset deck and shuffle
+        self.initialize_deck()
+        
+        # Deal face up card (last card in deck)
+        self.face_up_card = self.deck.pop()
+        
+        if num_players == 2:
+            # 2-player mode: 17 cards each + 17-card draw pile
+            for i in range(17):
+                self.players[list(self.players.keys())[0]]['hand'].append(self.deck.pop())
+                self.players[list(self.players.keys())[1]]['hand'].append(self.deck.pop())
+            self.draw_pile = self.deck.copy()  # Remaining 17 cards
+        else:
+            # 3-player mode: 17 cards each
+            for i in range(17):
+                self.players[list(self.players.keys())[0]]['hand'].append(self.deck.pop())
+                self.players[list(self.players.keys())[1]]['hand'].append(self.deck.pop())
+                self.players[list(self.players.keys())[2]]['hand'].append(self.deck.pop())
+            self.draw_pile = []  # No draw pile in 3-player mode
+        
+        # Assign face up card to appropriate player
+        self.assign_face_up_card()
+        return True
     
     def assign_face_up_card(self):
         target_rank, target_suit = ('3', 'diamonds')
