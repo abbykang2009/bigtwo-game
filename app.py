@@ -151,13 +151,18 @@ def handle_player_ready(data):
     
     if all_ready and len(games[room_id]['players']) >= min_players:
         if games[room_id]['game'].deal_cards():
-            # First show face up card to all players
+            # Debug print to check cards were dealt
+            print(f"Dealt cards in room {room_id}:")
+            for player, data in games[room_id]['game'].players.items():
+                print(f"{player}: {len(data['hand'])} cards")
+            
+            # Show face up card first
             emit('show_face_up_card', {
                 'card': games[room_id]['game'].face_up_card,
                 'owner': games[room_id]['game'].face_up_card_owner
             }, room=room_id)
             
-            # Then deal hands
+            # Then send hands to each player
             for player, data in games[room_id]['game'].players.items():
                 emit('deal_cards', {
                     'hand': data['hand'],
@@ -165,15 +170,7 @@ def handle_player_ready(data):
                     'room_id': room_id
                 }, room=player)
             
-            emit('start_game', {
-                'room_id': room_id,
-                'message': 'Game started!'
-            }, room=room_id)
-    else:
-        emit('waiting_status', {
-            'ready_players': sum(1 for p in games[room_id]['players'].values() if p['ready']),
-            'total_players': len(games[room_id]['players'])
-        }, room=room_id)
+            emit('start_game', room=room_id)
 
 @socketio.on('connect')
 def handle_connect():
