@@ -193,17 +193,32 @@
         }
 
         // Basic game functions (simplified)
-        function ready() {
-            alert("Ready clicked! Game will start when all players are ready.");
-        }
-        
-        function playCards() {
-            alert("Play selected cards - will implement later");
-        }
-        
-        function passTurn() {
-            alert("Pass turn - will implement later");
-        }
+       function ready() {
+    socket.emit('player_ready', {
+        room_id: roomId,
+        player_name: playerId
+    });
+    document.getElementById('ready-btn').disabled = true; // Keep only this one
+}
+
+socket.on('waiting_status', (data) => {
+    alert(`Waiting for players (${data.ready_players}/${data.total_players} ready)`);
+});
+
+socket.on('start_game', () => {
+    document.getElementById('waiting-area').style.display = 'none';
+    document.getElementById('game-area').style.display = 'block';
+    alert("Game is starting!");
+    // Card dealing logic will go here
+});
+
+function playCards() {
+    alert("Play selected cards - will implement later");
+}
+
+function passTurn() {
+    alert("Pass turn - will implement later");
+}
     </script>
 </body>
 </html>
