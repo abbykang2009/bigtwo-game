@@ -232,16 +232,19 @@ def index():
 
 @app.route('/create_game', methods=['POST'])
 def create_game():
-    player_name = request.json.get('player_name')
-    room_id = str(random.randint(1000, 9999))
-    games[room_id] = BigTwoGame(room_id)
-    player_id = str(random.randint(100000, 999999))
-    games[room_id].add_player(player_id, player_name)
-    session['player_id'] = player_id
-    session['room_id'] = room_id
+    data = request.get_json()
+    player_name = data['player_name']
+    
+    # Generate room ID and store game state
+    room_id = str(uuid.uuid4())[:8]
+    games[room_id] = {
+        'players': {player_name: {'cards': []}},
+        'status': 'waiting'
+    }
+    
     return jsonify({
-        'room_id': room_id,
-        'player_id': player_id
+        'player_id': player_name, 
+        'room_id': room_id
     })
 
 @app.route('/join_game', methods=['POST'])
