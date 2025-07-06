@@ -361,13 +361,5 @@ def handle_pass_turn():
     else:
         emit('play_error', {'message': message})
 
-if __name__ == '__main__':
-    # Production server with Waitress (4 spaces indentation)
-    serve(
-        app,
-        host="0.0.0.0",
-        port=10000,
-        threads=4
-    )
-    # Alternative for WebSocket support:
-    # socketio.run(app, host="0.0.0.0", port=10000, allow_unsafe_werkzeug=True)
+if __name__ == "__main__":
+    socketio.run(app, host='0.0.0.0', port=10000, allow_unsafe_werkzeug=True)
