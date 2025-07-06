@@ -1,13 +1,16 @@
-import os  # ← Add this with your other imports
-from flask import Flask, render_template
+# REPLACE the top imports with these:
+import os
 import random
+import uuid
 from collections import defaultdict
+from flask import Flask, request, jsonify, session, render_template
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")  # <-- ADD THIS LINE (temporary for testing)
+app.secret_key = 'my_dog_barks_3_times!'  # Example: "bigtwo_game_123_@!"
+socketio = SocketIO(app, cors_allowed_origins="*")  # 👈 Fix the typo "origins" not "origins"
 
 @app.route('/')
 def home():
@@ -45,7 +48,7 @@ if __name__ == "__main__":
     # For production (remove allow_unsafe_werkzeug)
     socketio.run(app, host="0.0.0.0", port=port)
 
-games = {}
+
 
 class BigTwoGame:
     def __init__(self, room_id):
@@ -385,5 +388,5 @@ def handle_pass_turn():
         emit('play_error', {'message': message})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Now works with the import
-    socketio.run(app, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 10000))
+    socketio.run(app, host="0.0.0.0", port=port)  # 👈 Only this one remains
