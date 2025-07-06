@@ -1,6 +1,7 @@
 import os
 import random
 import uuid
+from collections import defaultdict
 from flask import Flask, request, jsonify, session, render_template
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
@@ -66,6 +67,26 @@ def handle_join_room(data):
         emit('room_update', {'players': active_rooms[room_id]}, to=room_id)
     else:
         emit('error', {'message': 'Room does not exist'})
+
+@socketio.on('player_ready')
+def handle_player_ready(data):
+    room_id = data['room_id']
+    player_name = data['player_name']
+    
+    if room_id in games:
+        games[room_id]['players'][player_name]['ready'] = True
+        
+        # Check if all players are ready
+        all_ready = all(p['ready'] for p in games[room_id]['players'].values())
+        min_players = 2  # Minimum players to start
+        
+        if all_ready and len(games[room_id]['players']) >= min_players:
+            emit('start_game', {'room_id': room_id}, room=room_id)
+        else:
+            emit('waiting_status', {
+                'ready_players': sum(1 for p in games[room_id]['players'].values() if p['ready']),
+                'total_players': len(games[room_id]['players'])
+            }, room=room_id)
 
 @socketio.on('connect')
 def handle_connect():
