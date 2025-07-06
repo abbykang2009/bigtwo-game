@@ -1,12 +1,12 @@
 import os  # ← Add this with your other imports
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, send_from_directory
 import random
 from collections import defaultdict
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 socketio = SocketIO(app, cors_allowed_origins="*")  # <-- ADD THIS LINE (temporary for testing)
 
 @app.route("/")
