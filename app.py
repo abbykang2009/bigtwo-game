@@ -12,15 +12,28 @@ def home():
     return "Hello World"
 
 # ADD THESE LINES FOR ROOM MANAGEMENT
-@socketio.on("create_room")
-def handle_create_room(room_id):
-    join_room(room_id)
-    emit("room_created", {"room_id": room_id}, to=room_id)
+# Add below your existing socketio code
+active_rooms = {}  # Tracks all rooms and players
 
-@socketio.on("join_room")
-def handle_join_room(room_id):
+@socketio.on('create_room')
+def handle_create_room(data):
+    room_id = data['room_id']
+    username = data['username']
+    active_rooms[room_id] = [username]  # New room with creator
     join_room(room_id)
-    emit("player_joined", {"message": "New player!"}, to=room_id)
+    emit('room_update', {'players': active_rooms[room_id]}, to=room_id)
+
+@socketio.on('join_room')
+def handle_join_room(data):
+    room_id = data['room_id']
+    username = data['username']
+    
+    if room_id in active_rooms:
+        active_rooms[room_id].append(username)  # Add player
+        join_room(room_id)
+        emit('room_update', {'players': active_rooms[room_id]}, to=room_id)
+    else:
+        emit('error', {'message': 'Room does not exist'})
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)  # <-- CHANGE THIS LINE
