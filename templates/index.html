@@ -154,13 +154,38 @@
 
         // Handle card dealing
         socket.on('deal_cards', (data) => {
-            const handDiv = document.getElementById('hand');
-            handDiv.innerHTML = '';
-            
-            data.hand.forEach(card => {
-                const cardElement = createCardElement(card, true);
-                handDiv.appendChild(cardElement);
-            });
+    console.log("Received cards:", data.hand); // Debug log
+    
+    const handDiv = document.getElementById('hand');
+    handDiv.innerHTML = '';
+    
+    // Sort cards by rank and suit for better display
+    const sortedHand = sortCards(data.hand);
+    
+    sortedHand.forEach(card => {
+        const cardElement = createCardElement(card, true);
+        handDiv.appendChild(cardElement);
+    });
+    
+    // Update draw pile display
+    if (data.draw_pile_count > 0) {
+        document.getElementById('draw-pile-count').textContent = 
+            `Draw Pile: ${data.draw_pile_count} cards`;
+    }
+});
+
+// Add this helper function to sort cards
+function sortCards(cards) {
+    const suitOrder = { 'spades': 0, 'hearts': 1, 'diamonds': 2, 'clubs': 3 };
+    const rankOrder = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+    
+    return cards.sort((a, b) => {
+        if (rankOrder.indexOf(a[0]) !== rankOrder.indexOf(b[0])) {
+            return rankOrder.indexOf(a[0]) - rankOrder.indexOf(b[0]);
+        }
+        return suitOrder[a[1]] - suitOrder[b[1]];
+    });
+}
             
             // Show draw pile count if in 2-player mode
             if (data.draw_pile_count > 0) {
