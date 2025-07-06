@@ -31,28 +31,6 @@
     </style>
 </head>
 <body>
-     <!-- Your game HTML here -->
-
-    <!-- 2. Initialize socket BEFORE your game logic -->
-    <script>
-        // Initialize Socket.IO connection
-        const socket = io("https://bigtwo-game.onrender.com", { 
-  transports: ['websocket'] 
-});
-        });
-
-        // Debugging connection
-        socket.on('connect', () => console.log("Connected! Socket ID:", socket.id));
-        socket.on('disconnect', () => console.log("Disconnected!"));
-
-        // --- YOUR EXISTING GAME CODE BELOW HERE ---
-        let playerId;
-        let roomId;
-        
-        function createGame() {
-            // ... your existing functions ...
-        }
-    </script>
     <div class="container">
         <h1>Big Two - 2-3 Player Online</h1>
         
@@ -113,44 +91,66 @@
     </div>
 
     <script>
-       
+        // Initialize Socket.IO connection
+        const socket = io("https://bigtwo-game.onrender.com", { 
+            transports: ['websocket'] 
+        });
+        
         let playerId;
         let roomId;
         let selectedCards = [];
         
+        // Debugging connection
+        socket.on('connect', () => console.log("Connected! Socket ID:", socket.id));
+        socket.on('disconnect', () => console.log("Disconnected!"));
+        socket.on('connect_error', (err) => console.log("Connection error:", err));
+
+        // Handle room updates
+        socket.on('room_update', (data) => {
+            const playerList = document.getElementById('player-list');
+            playerList.innerHTML = '';
+            data.players.forEach(player => {
+                const li = document.createElement('li');
+                li.textContent = player;
+                playerList.appendChild(li);
+            });
+            document.getElementById('player-count').textContent = data.players.length;
+        });
+
+        // Handle errors
+        socket.on('error', (data) => {
+            alert(data.message);
+        });
+
         function createGame() {
-    const playerName = document.getElementById('player-name-create').value;
-    if (!playerName) {
-        alert('Please enter your name');
-        return;
-    }
-    
-    // Generate simple room ID
-    const roomId = 'room_' + Math.random().toString(36).substring(2, 8);
-    
-    // Show waiting area
-    document.getElementById('setup-area').style.display = 'none';
-    document.getElementById('waiting-area').style.display = 'block';
-    document.getElementById('display-room-id').textContent = roomId;
-    
-    // Tell server we're creating a room
-    socket.emit('create_room', {
-        username: playerName,
-        room_id: roomId
-    });
-}
-    
-    fetch('/create_game', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_name: playerName })
-    })
-    .then(response => response.json())
-    .then(data => {
-        window.location.href = `/game?room=${data.room_id}&player=${data.player_id}`;
-    })
-    .catch(error => console.error('Error:', error));
-}
+            const playerName = document.getElementById('player-name-create').value;
+            if (!playerName) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            fetch('/create_game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ player_name: playerName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                roomId = data.room_id;
+                playerId = data.player_name; // Using name as ID for simplicity
+                
+                document.getElementById('setup-area').style.display = 'none';
+                document.getElementById('waiting-area').style.display = 'block';
+                document.getElementById('display-room-id').textContent = roomId;
+                
+                // Tell server we're creating a room
+                socket.emit('create_room', {
+                    username: playerName,
+                    room_id: roomId
+                });
+            })
+            .catch(error => console.error('Error:', error));
+        }
         
         function joinGame() {
             const playerName = document.getElementById('player-name-join').value;
@@ -163,13 +163,11 @@
             
             fetch('/join_game', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     player_name: playerName,
                     room_id: roomIdInput 
-                }),
+                })
             })
             .then(response => response.json())
             .then(data => {
@@ -178,306 +176,34 @@
                     return;
                 }
                 
-                playerId = data.player_id;
-                roomId = data.room_id;
+                roomId = roomIdInput;
+                playerId = playerName; // Using name as ID for simplicity
                 
                 document.getElementById('setup-area').style.display = 'none';
                 document.getElementById('waiting-area').style.display = 'block';
                 document.getElementById('display-room-id').textContent = roomId;
                 
-                connectSocket();
+                // Tell server we're joining a room
+                socket.emit('join_room', {
+                    username: playerName,
+                    room_id: roomId
+                });
             })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+            .catch(error => console.error('Error:', error));
         }
-        
+
+        // Basic game functions (simplified)
         function ready() {
-            fetch('/ready', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('player-count').textContent = Object.keys(games[roomId].players).length;
-                
-                if (data.show_face_up_card) {
-                    showFaceUpCard(data.face_up_card);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
-        
-        function showFaceUpCard(card) {
-            const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
-            modal.style.display = 'flex';
-            modal.style.justifyContent = 'center';
-            modal.style.alignItems = 'center';
-            modal.style.zIndex = '1000';
-            
-            const content = document.createElement('div');
-            content.style.backgroundColor = 'white';
-            content.style.padding = '20px';
-            content.style.borderRadius = '10px';
-            content.style.textAlign = 'center';
-            
-            content.innerHTML = `
-                <h2>Face Up Card</h2>
-                <div id="face-up-card-display" style="margin: 20px;"></div>
-                <p>The player with the 3♦ gets this card (or 3♣ if this is the 3♦)</p>
-                <button onclick="startGameAfterShowingCard()">Continue</button>
-            `;
-            
-            const cardElement = createCardElement(card, false);
-            document.getElementById('face-up-card-display').appendChild(cardElement);
-            
-            modal.appendChild(content);
-            document.body.appendChild(modal);
-        }
-        
-        function startGameAfterShowingCard() {
-            fetch('/start_game', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.game_started) {
-                    document.querySelector('div[style*="rgba(0,0,0,0.7)"]').remove();
-                    document.getElementById('waiting-area').style.display = 'none';
-                    document.getElementById('game-area').style.display = 'block';
-                    updateGameState();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
-        
-        function connectSocket() {
-    socket = io();
-    
-    socket.on('connect', () => {
-        console.log('Connected to socket server');
-        // Tell server we're joining the room
-        socket.emit('join_room', { 
-            room_id: roomId, 
-            player_name: document.getElementById('player-name-create').value || 
-                        document.getElementById('player-name-join').value 
-        });
-    });
-
-    // Add these NEW EVENT HANDLERS:
-    socket.on('room_update', (data) => {
-        const playerList = document.getElementById('player-list');
-        playerList.innerHTML = '';  // Clear current list
-        
-        data.players.forEach(player => {
-            const li = document.createElement('li');
-            li.textContent = player;
-            playerList.appendChild(li);
-        });
-    });
-
-    socket.on('error', (data) => {
-        alert(data.message);
-    });
-
-    // Keep your existing game_update handler
-    socket.on('game_update', (data) => {
-        updateGameState();
-        if (data.winner) {
-            showWinnerScreen(data.winner, data.scores);
-        }
-    });
-    
-    socket.on('play_error', (data) => {
-        alert(data.message);
-    });
-}
-        
-        function updatePlayerList() {
-            fetch('/game_state')
-            .then(response => response.json())
-            .then(data => {
-                if (!data.error && data.game_started === false) {
-                    document.getElementById('player-count').textContent = 
-                        Object.keys(games[roomId].players).length;
-                }
-            });
-        }
-        
-        function updateGameState() {
-            fetch('/game_state')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    console.error(data.error);
-                    return;
-                }
-                
-                // Update opponents display
-                const opponentsContainer = document.getElementById('opponents-container');
-                opponentsContainer.innerHTML = '';
-                
-                data.opponents.forEach(opponent => {
-                    const opponentDiv = document.createElement('div');
-                    opponentDiv.className = 'opponent-info';
-                    opponentDiv.innerHTML = `
-                        <h3>${opponent.name}</h3>
-                        <p>Cards: ${opponent.card_count}</p>
-                        ${opponent.score ? `<p>Score: ${opponent.score}</p>` : ''}
-                    `;
-                    opponentsContainer.appendChild(opponentDiv);
-                });
-                
-                // Update turn indicator
-                const turnIndicator = document.getElementById('turn-indicator');
-                if (data.is_current_player) {
-                    turnIndicator.textContent = "It's your turn!";
-                    turnIndicator.style.color = "green";
-                } else {
-                    turnIndicator.textContent = "Waiting for opponent...";
-                    turnIndicator.style.color = "red";
-                }
-                
-                // Update last played cards
-                const lastPlayedDiv = document.getElementById('last-played-cards');
-                lastPlayedDiv.innerHTML = '';
-                if (data.last_played) {
-                    data.last_played.forEach(card => {
-                        lastPlayedDiv.appendChild(createCardElement(card, false));
-                    });
-                } else {
-                    lastPlayedDiv.innerHTML = '<p>No cards played yet</p>';
-                }
-                
-                // Update player's hand
-                const handDiv = document.getElementById('hand');
-                handDiv.innerHTML = '';
-                data.hand.forEach(card => {
-                    const cardElement = createCardElement(card, true);
-                    handDiv.appendChild(cardElement);
-                });
-                
-                // Enable/disable buttons
-                document.getElementById('play-btn').disabled = !data.is_current_player;
-                document.getElementById('pass-btn').disabled = !data.is_current_player;
-                
-                // Show winner if game ended
-                if (data.winner) {
-                    showWinnerScreen(data.winner, data.scores);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
-        
-        function showWinnerScreen(winnerId, scores) {
-            // Find winner name
-            let winnerName = '';
-            for (const [pid, player] of Object.entries(games[roomId].players)) {
-                if (pid === winnerId) {
-                    winnerName = player.name;
-                    break;
-                }
-            }
-            
-            const winnerScreen = document.getElementById('winner-screen');
-            const winnerMessage = document.getElementById('winner-message');
-            const scoresDisplay = document.getElementById('scores-display');
-            
-            if (winnerId === playerId) {
-                winnerMessage.textContent = `Congratulations ${winnerName}! You won!`;
-            } else {
-                winnerMessage.textContent = `${winnerName} has won the game!`;
-            }
-            
-            // Display scores
-            scoresDisplay.innerHTML = '<h3>Scores:</h3>';
-            for (const [pid, score] of Object.entries(scores)) {
-                const player = games[roomId].players[pid];
-                scoresDisplay.innerHTML += `<p>${player.name}: ${score} cards remaining</p>`;
-            }
-            
-            winnerScreen.style.display = 'flex';
-        }
-        
-        function createCardElement(card, selectable) {
-            const [rank, suit] = card;
-            const cardElement = document.createElement('div');
-            cardElement.className = `card ${suit}`;
-            
-            const rankElement = document.createElement('div');
-            rankElement.className = 'rank';
-            rankElement.textContent = rank;
-            
-            const suitElement = document.createElement('div');
-            suitElement.className = 'suit';
-            
-            switch(suit) {
-                case 'hearts': suitElement.textContent = '♥'; break;
-                case 'diamonds': suitElement.textContent = '♦'; break;
-                case 'clubs': suitElement.textContent = '♣'; break;
-                case 'spades': suitElement.textContent = '♠'; break;
-            }
-            
-            const rankBottomElement = document.createElement('div');
-            rankBottomElement.className = 'rank bottom';
-            rankBottomElement.textContent = rank;
-            
-            cardElement.appendChild(rankElement);
-            cardElement.appendChild(suitElement);
-            cardElement.appendChild(rankBottomElement);
-            
-            if (selectable) {
-                cardElement.addEventListener('click', () => {
-                    cardElement.classList.toggle('selected');
-                    
-                    const cardIndex = selectedCards.findIndex(c => 
-                        c[0] === card[0] && c[1] === card[1]);
-                    
-                    if (cardIndex === -1) {
-                        selectedCards.push(card);
-                    } else {
-                        selectedCards.splice(cardIndex, 1);
-                    }
-                });
-            }
-            
-            return cardElement;
+            alert("Ready clicked! Game will start when all players are ready.");
         }
         
         function playCards() {
-            if (selectedCards.length === 0) {
-                alert('Please select cards to play');
-                return;
-            }
-            
-            socket.emit('play_cards', {
-                cards: selectedCards
-            });
-            
-            selectedCards = [];
+            alert("Play selected cards - will implement later");
         }
         
         function passTurn() {
-            socket.emit('pass_turn');
+            alert("Pass turn - will implement later");
         }
     </script>
-
 </body>
 </html>
