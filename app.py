@@ -1,17 +1,20 @@
 import os  # ← Add this with your other imports
-from flask import Flask, render_template, request, jsonify, session, send_from_directory
+from flask import Flask, render_template
 import random
 from collections import defaultdict
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")  # <-- ADD THIS LINE (temporary for testing)
 
-@app.route("/")
+@app.route('/')
 def home():
-    return render_template("index.html")  # or your HTML file name
+    return render_template('index.html')  # Serves your combined file
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=10000)
 
 # ADD THESE LINES FOR ROOM MANAGEMENT
 # Add below your existing socketio code
