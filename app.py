@@ -7,7 +7,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'bigtwo_game_key_' + str(random.randint(1000, 9999))  # Random secret key
+app.secret_key = 'bigtwo_key_' + str(random.randint(1000, 9999))
 
 # Initialize Socket.IO
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -16,11 +16,73 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 games = {}
 active_rooms = {}
 
+class BigTwoGame:
+    def __init__(self, room_id):
+        self.room_id = room_id
+        self.players = {}  # {player_name: {'hand': [], 'passed': False}}
+        self.draw_pile = []
+        self.face_up_card = None
+        self.current_player = None
+        self.initialize_deck()
+    
+    def initialize_deck(self):
+        suits = ['spades', 'hearts', 'diamonds', 'clubs']
+        ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2']
+        self.deck = [(rank, suit) for suit in suits for rank in ranks]
+        random.shuffle(self.deck)
+    
+    def add_player(self, player_name):
+        if len(self.players) >= 3:
+            return False
+        self.players[player_name] = {'hand': [], 'passed': False}
+        return True
+    
+    def deal_cards(self):
+        num_players = len(self.players)
+        if num_players not in [2, 3]:
+            return False
+        
+        # Deal face up card (last card in deck)
+        self.face_up_card = self.deck.pop()
+        
+        if num_players == 2:
+            # 2-player mode: 17 cards each + 17-card draw pile
+            for i in range(17):
+                self.players[list(self.players.keys())[0]]['hand'].append(self.deck.pop())
+                self.players[list(self.players.keys())[1]]['hand'].append(self.deck.pop())
+            self.draw_pile = self.deck  # Remaining 17 cards become draw pile
+        else:
+            # 3-player mode: 17 cards each
+            for i in range(17):
+                self.players[list(self.players.keys())[0]]['hand'].append(self.deck.pop())
+                self.players[list(self.players.keys())[1]]['hand'].append(self.deck.pop())
+                self.players[list(self.players.keys())[2]]['hand'].append(self.deck.pop())
+            self.draw_pile = []  # No draw pile in 3-player mode
+        
+        # Assign face up card to appropriate player
+        self.assign_face_up_card()
+        return True
+    
+    def assign_face_up_card(self):
+        target_rank, target_suit = ('3', 'diamonds')
+        if self.face_up_card == ('3', 'diamonds'):
+            target_rank, target_suit = ('3', 'clubs')
+        
+        for player_name, data in self.players.items():
+            if (target_rank, target_suit) in data['hand']:
+                data['hand'].append(self.face_up_card)
+                self.face_up_card_owner = player_name
+                return
+        
+        # If no player has the target card, assign to random player
+        random_player = random.choice(list(self.players.keys()))
+        self.players[random_player]['hand'].append(self.face_up_card)
+        self.face_up_card_owner = random_player
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# API Endpoints
 @app.route('/create_game', methods=['POST'])
 def create_game():
     player_name = request.json.get('player_name')
@@ -47,7 +109,6 @@ def join_game():
     games[room_id]['players'][player_name] = {'ready': False}
     return jsonify({'status': 'joined'})
 
-# Socket.IO Events
 @socketio.on('create_room')
 def handle_create_room(data):
     room_id = data['room_id']
@@ -73,20 +134,43 @@ def handle_player_ready(data):
     room_id = data['room_id']
     player_name = data['player_name']
     
-    if room_id in games:
-        games[room_id]['players'][player_name]['ready'] = True
-        
-        # Check if all players are ready
-        all_ready = all(p['ready'] for p in games[room_id]['players'].values())
-        min_players = 2  # Minimum players to start
-        
-        if all_ready and len(games[room_id]['players']) >= min_players:
-            emit('start_game', {'room_id': room_id}, room=room_id)
-        else:
-            emit('waiting_status', {
-                'ready_players': sum(1 for p in games[room_id]['players'].values() if p['ready']),
-                'total_players': len(games[room_id]['players'])
+    if room_id not in games:
+        return
+    
+    if 'game' not in games[room_id]:
+        games[room_id]['game'] = BigTwoGame(room_id)
+    
+    games[room_id]['players'][player_name]['ready'] = True
+    games[room_id]['game'].add_player(player_name)
+    
+    all_ready = all(p['ready'] for p in games[room_id]['players'].values())
+    min_players = 2
+    
+    if all_ready and len(games[room_id]['players']) >= min_players:
+        if games[room_id]['game'].deal_cards():
+            # First show face up card to all players
+            emit('show_face_up_card', {
+                'card': games[room_id]['game'].face_up_card,
+                'owner': games[room_id]['game'].face_up_card_owner
             }, room=room_id)
+            
+            # Then deal hands
+            for player, data in games[room_id]['game'].players.items():
+                emit('deal_cards', {
+                    'hand': data['hand'],
+                    'draw_pile_count': len(games[room_id]['game'].draw_pile),
+                    'room_id': room_id
+                }, room=player)
+            
+            emit('start_game', {
+                'room_id': room_id,
+                'message': 'Game started!'
+            }, room=room_id)
+    else:
+        emit('waiting_status', {
+            'ready_players': sum(1 for p in games[room_id]['players'].values() if p['ready']),
+            'total_players': len(games[room_id]['players'])
+        }, room=room_id)
 
 @socketio.on('connect')
 def handle_connect():
