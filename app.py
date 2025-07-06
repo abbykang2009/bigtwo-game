@@ -1,8 +1,9 @@
+import os  # ← Add this with your other imports
 from flask import Flask, render_template, request, jsonify, session
 import random
 from collections import defaultdict
 from flask_socketio import SocketIO, emit, join_room, leave_room
-import os  # ← Add this with your other imports
+
 
 
 app = Flask(__name__)
@@ -37,8 +38,9 @@ def handle_join_room(data):
         emit('error', {'message': 'Room does not exist'})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # ← Use Render's PORT or default
-    socketio.run(app, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 10000))
+    # For production (remove allow_unsafe_werkzeug)
+    socketio.run(app, host="0.0.0.0", port=port)
 
 games = {}
 
