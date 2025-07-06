@@ -119,7 +119,26 @@
         let selectedCards = [];
         
         function createGame() {
-    const playerName = document.getElementById('player-name').value;
+    const playerName = document.getElementById('player-name-create').value;
+    if (!playerName) {
+        alert('Please enter your name');
+        return;
+    }
+    
+    // Generate simple room ID
+    const roomId = 'room_' + Math.random().toString(36).substring(2, 8);
+    
+    // Show waiting area
+    document.getElementById('setup-area').style.display = 'none';
+    document.getElementById('waiting-area').style.display = 'block';
+    document.getElementById('display-room-id').textContent = roomId;
+    
+    // Tell server we're creating a room
+    socket.emit('create_room', {
+        username: playerName,
+        room_id: roomId
+    });
+}
     
     fetch('/create_game', {
         method: 'POST',
@@ -459,15 +478,6 @@
             socket.emit('pass_turn');
         }
     </script>
-<ul id="player-list"></ul>  <!-- Shows player names -->
 
-<!-- Add Socket.IO library -->
-<!-- Load Socket.IO FIRST -->
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<!-- Then your custom JS -->
-<script src="/static/script.js"></script> 
-<script>
-    
-</script>
 </body>
 </html>
