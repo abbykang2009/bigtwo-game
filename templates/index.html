@@ -241,25 +241,46 @@
         }
         
         function connectSocket() {
-            socket = io();
-            
-            socket.on('connect', () => {
-                console.log('Connected to socket server');
-                // Update player list periodically
-                setInterval(updatePlayerList, 2000);
-            });
-            
-            socket.on('game_update', (data) => {
-                updateGameState();
-                if (data.winner) {
-                    showWinnerScreen(data.winner, data.scores);
-                }
-            });
-            
-            socket.on('play_error', (data) => {
-                alert(data.message);
-            });
+    socket = io();
+    
+    socket.on('connect', () => {
+        console.log('Connected to socket server');
+        // Tell server we're joining the room
+        socket.emit('join_room', { 
+            room_id: roomId, 
+            player_name: document.getElementById('player-name-create').value || 
+                        document.getElementById('player-name-join').value 
+        });
+    });
+
+    // Add these NEW EVENT HANDLERS:
+    socket.on('room_update', (data) => {
+        const playerList = document.getElementById('player-list');
+        playerList.innerHTML = '';  // Clear current list
+        
+        data.players.forEach(player => {
+            const li = document.createElement('li');
+            li.textContent = player;
+            playerList.appendChild(li);
+        });
+    });
+
+    socket.on('error', (data) => {
+        alert(data.message);
+    });
+
+    // Keep your existing game_update handler
+    socket.on('game_update', (data) => {
+        updateGameState();
+        if (data.winner) {
+            showWinnerScreen(data.winner, data.scores);
         }
+    });
+    
+    socket.on('play_error', (data) => {
+        alert(data.message);
+    });
+}
         
         function updatePlayerList() {
             fetch('/game_state')
