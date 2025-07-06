@@ -440,7 +440,10 @@
 <ul id="player-list"></ul>  <!-- Shows player names -->
 
 <!-- Add Socket.IO library -->
+<!-- Load Socket.IO FIRST -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<!-- Then your custom JS -->
+<script src="/static/script.js"></script> 
 <script>
     const socket = io();  // Connect to server
 </script>
