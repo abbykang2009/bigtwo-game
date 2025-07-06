@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session
 import random
 from collections import defaultdict
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from waitress import serve
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -344,4 +345,13 @@ def handle_pass_turn():
         emit('play_error', {'message': message})
 
 if __name__ == '__main__':
-    socketio.run(app, allow_unsafe_werkzeug=True)  # Add this parameter
+    if __name__ == '__main__':
+    # Production server (Render-compatible)
+    serve(
+        app, 
+        host="0.0.0.0", 
+        port=10000,
+        threads=4  # Optional: improves performance
+    )
+    # For development (optional local testing):
+    # socketio.run(app, debug=True)
