@@ -36,7 +36,8 @@ def handle_join_room(data):
         emit('error', {'message': 'Room does not exist'})
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)  # <-- CHANGE THIS LINE
+    port = int(os.environ.get("PORT", 10000))  # ← Use Render's PORT or default
+    socketio.run(app, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
 
 games = {}
 
