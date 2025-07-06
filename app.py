@@ -1,6 +1,8 @@
 import os
 import random
 import uuid
+import eventlet
+eventlet.monkey_patch()  # Add this right after imports
 from collections import defaultdict
 from flask import Flask, request, jsonify, session, render_template
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -10,7 +12,9 @@ app = Flask(__name__)
 app.secret_key = 'bigtwo_key_' + str(random.randint(1000, 9999))
 
 # Initialize Socket.IO
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, 
+                   cors_allowed_origins="*",
+                   async_mode='eventlet')  # Explicitly set async mode
 
 # Game data storage
 games = {}
